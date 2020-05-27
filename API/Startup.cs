@@ -4,6 +4,7 @@ using Application.Interfaces;
 using AutoMapper;
 using Domain;
 using MediatR;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -11,7 +12,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
 using Persistence;
+using System.Text;
 
 namespace API
 {
@@ -35,14 +38,26 @@ namespace API
             services.AddMediatR(typeof(List.Handler).Assembly);
             services.AddAutoMapper(typeof(List.Handler));
 
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration.GetSection("AppSettings:Token").Value));
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                 .AddJwtBearer(opt =>
+                 {
+                     opt.TokenValidationParameters = new TokenValidationParameters
+                     {
+                         ValidateIssuerSigningKey = true,
+                         IssuerSigningKey = key,
+                         ValidateAudience = false,
+                         ValidateIssuer = false,
+                     };
+                 });
+
             services.AddCors(options =>
             {
                 options.AddPolicy("CorsPolicy", policy =>
                 {
                     policy.AllowAnyHeader()
                           .AllowAnyMethod()
-                          .AllowAnyOrigin()
-                          .AllowCredentials();
+                          .AllowAnyOrigin();
                 });
             });
 
@@ -63,7 +78,7 @@ namespace API
 
             if (env.IsDevelopment())
             {
-               // app.UseDeveloperExceptionPage();
+                // app.UseDeveloperExceptionPage();
             }
 
             app.UseHttpsRedirection();
